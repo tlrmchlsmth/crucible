@@ -1,6 +1,8 @@
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
+use super::HardToolCfg;
+
 #[derive(Debug, thiserror::Error)]
 #[error("broker URL has an empty authority: {url:?}")]
 pub struct EmptyBrokerAuthority {
@@ -47,6 +49,10 @@ pub struct BrokerCfg {
     /// The build *target* (`FORGE_*`: registry, push authfile, deploy name) is the loop pod's env.
     #[serde(default)]
     pub build: bool,
+    /// nm-hard-tools services aggregated behind this broker. Only the broker reaches these
+    /// endpoints or resolves their credentials; the sandbox continues to reach one MCP server.
+    #[serde(default)]
+    pub hard_tool: Vec<HardToolCfg>,
 }
 
 impl Default for BrokerCfg {
@@ -58,6 +64,7 @@ impl Default for BrokerCfg {
             name: default_broker_name(),
             bin: String::new(),
             build: false,
+            hard_tool: Vec::new(),
         }
     }
 }

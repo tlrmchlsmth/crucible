@@ -20,6 +20,7 @@
 - [The codex harness](./codex-harness.md)
 - [The OpenShell fork](./openshell-fork.md)
 - [JIRA tools (mediated)](./jira-proxy.md)
+- [nm-hard-tools (mediated)](./nm-hard-tools.md)
 
 # Architecture decisions
 

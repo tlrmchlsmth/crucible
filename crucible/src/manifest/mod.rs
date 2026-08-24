@@ -4,6 +4,7 @@
 
 mod broker;
 mod deploy;
+mod hard_tools;
 mod judge;
 mod measure;
 mod openshell;
@@ -17,6 +18,7 @@ mod world;
 
 pub use broker::{BrokerCfg, broker_endpoint_from_url, broker_port, resolve_broker_url};
 pub use deploy::DeployCfg;
+pub use hard_tools::HardToolCfg;
 pub use judge::JudgeCfg;
 pub use measure::MeasureCfg;
 pub use openshell::OpenshellCfg;
@@ -544,6 +546,7 @@ fn validate_common(c: CommonCfg<'_>) -> Result<()> {
     if c.agent.broker.enabled && c.agent.broker.bin.is_empty() {
         return Err(ManifestError::BrokerBinRequired.into());
     }
+    hard_tools::validate(&c.agent.broker.hard_tool, c.agent.broker.enabled)?;
     validate_carry_forward(&c.workspace.carry_forward)?;
     validate_artifacts(&c.workspace.artifact)?;
     search::validate_search(c.search)?;

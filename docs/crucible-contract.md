@@ -613,6 +613,12 @@ endpoint is appended regardless of `inherit_defaults`, because the broker is eng
 the domain opted into, not a built-in the domain can subtract. A broker-less opt-out with both
 lists empty is still a legal total air-gap: nothing resolves, and no binary may open a socket.
 
+`[[agent.broker.hard_tool]]` adds an operator-deployed
+[`nm-hard-tools`](./nm-hard-tools.md) service behind that same broker. Each entry requires a unique
+`name`, an HTTP(S) `url`, and optionally `bearer_token_env`. The broker discovers and prefixes the
+upstream tools; the sandbox receives neither the upstream endpoint nor its credential, so no extra
+sandbox egress entry is created.
+
 ---
 
 ## 7. Session wire format (compatibility)

@@ -31,6 +31,7 @@ pub mod distress;
 pub mod draft_pr;
 pub(crate) mod gateway;
 pub mod gpu_check;
+pub mod hard_tools;
 pub mod jira;
 pub(crate) mod measure;
 pub mod profile;

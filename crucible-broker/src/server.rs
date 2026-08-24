@@ -9,6 +9,7 @@ use crate::control_approval::ControlApproval;
 use crate::deploy::DeployRegistry;
 use crate::draft_pr::DraftPrApproval;
 use crate::gpu_check::GpuCheck;
+use crate::hard_tools::HardTools;
 use crate::types::{Resolution, TraceParams};
 use jira_mcp::{JiraClient, render};
 use rmcp::handler::server::router::tool::ToolRouter;
@@ -279,6 +280,27 @@ impl McpServer {
         deploys: Arc<DeployRegistry>,
         codegen: Arc<CodegenState>,
     ) -> Self {
+        Self::new_with_hard_tools(
+            resolver,
+            frozen,
+            degraded_headless,
+            jira,
+            deploys,
+            codegen,
+            Arc::new(HardTools::empty()),
+        )
+        .expect("an empty nm-hard-tools registry cannot collide")
+    }
+
+    pub fn new_with_hard_tools(
+        resolver: Box<dyn TraceResolver + Send + Sync>,
+        frozen: TraceParams,
+        degraded_headless: bool,
+        jira: Option<Arc<JiraClient>>,
+        deploys: Arc<DeployRegistry>,
+        codegen: Arc<CodegenState>,
+        hard_tools: Arc<HardTools>,
+    ) -> anyhow::Result<Self> {
         // Approval channel is a runtime choice (async approval). `BROKER_APPROVAL=control` selects the
         // attended, token-free control-bridge surface; otherwise the headless draft-PR default.
         let (approval, approval_channel): (
@@ -299,7 +321,8 @@ impl McpServer {
         // the routed text is exactly the generic attribute text.
         let mut tool_router = Self::tool_router();
         crate::describe::apply(&mut tool_router, &crate::describe::DescVars::from_env());
-        Self {
+        hard_tools.install(&mut tool_router)?;
+        Ok(Self {
             broker: Arc::new(Broker {
                 resolver,
                 admission: Box::new(GpuCheck::from_env()),
@@ -312,7 +335,7 @@ impl McpServer {
             deploys,
             codegen,
             tool_router,
-        }
+        })
     }
 
     #[tool(

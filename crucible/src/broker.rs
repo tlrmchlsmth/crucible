@@ -71,6 +71,13 @@ pub fn ensure_running(
         .stdout(Stdio::null())
         // Keep the broker's stderr (its one startup line + any error) in crucible's pod log.
         .stderr(Stdio::inherit());
+    if !cfg.hard_tool.is_empty() {
+        cmd.env(
+            "BROKER_HARD_TOOLS",
+            serde_json::to_string(&cfg.hard_tool)
+                .context("serializing nm-hard-tools broker configuration")?,
+        );
+    }
     if let Some(port) = control_port {
         // The bridge binds 0.0.0.0:<port>; the broker is a same-pod child, so loopback reaches it.
         cmd.env("BROKER_CONTROL_ADDR", format!("127.0.0.1:{port}"));

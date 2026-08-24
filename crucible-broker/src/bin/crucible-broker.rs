@@ -166,17 +166,31 @@ async fn main() -> anyhow::Result<()> {
     let deploys = std::sync::Arc::new(crucible_broker::deploy::DeployRegistry::new());
     // Same shared-across-per-request-instances rationale as `deploys`: the code-gen build/measure memo.
     let codegen = std::sync::Arc::new(crucible_broker::codegen::CodegenState::new());
+    let hard_tools = std::sync::Arc::new(crucible_broker::hard_tools::HardTools::from_env().await?);
+    // Build one instance before binding so a dynamic upstream name collision fails startup rather
+    // than making the first sandbox request discover a half-configured broker.
+    let _validated_server = McpServer::new_with_hard_tools(
+        Box::new(NullResolver),
+        frozen.clone(),
+        degraded,
+        jira.clone(),
+        deploys.clone(),
+        codegen.clone(),
+        hard_tools.clone(),
+    )?;
 
     let service: StreamableHttpService<McpServer, LocalSessionManager> = StreamableHttpService::new(
         move || {
-            Ok(McpServer::new(
+            McpServer::new_with_hard_tools(
                 Box::new(NullResolver),
                 frozen.clone(),
                 degraded,
                 jira.clone(),
                 deploys.clone(),
                 codegen.clone(),
-            ))
+                hard_tools.clone(),
+            )
+            .map_err(|error| std::io::Error::other(error.to_string()))
         },
         Default::default(),
         config,
