@@ -1,0 +1,81 @@
+#:schema ../schema/adr.schema.json
+
+[govctl]
+id = "ADR-0024"
+title = "Integrate MCP tools through Crucible's privileged broker"
+status = "accepted"
+date = "2026-08-24"
+refs = [
+    "ADR-0002",
+    "RFC-0001:C-EGRESS",
+]
+
+[content]
+context = """
+Crucible will acquire MCP tools from multiple sources. Some are implemented by Crucible and some
+come from external MCP servers; either kind may carry credentials, reach privileged infrastructure,
+or need policy that the sandboxed agent must not control. If every integration chooses its own
+process, endpoint, egress rule, naming scheme, and secret handling, Crucible accumulates parallel
+trust boundaries and the sandbox can distinguish or bypass them. [[ADR-0002]] already establishes
+the broker as the server-side privilege boundary, and [[RFC-0001:C-EGRESS]] requires sandbox egress
+to remain deny-by-default with the broker endpoint supplied as engine plumbing. The missing
+decision is a uniform path for adding MCP tools to Crucible."""
+decision = """
+Crucible's privileged broker is the single MCP aggregation surface presented to the sandbox. A new
+tool is integrated in one of two ways: a Crucible-owned capability is implemented as a native broker
+handler; an external MCP server is integrated through a broker-side adapter that discovers and
+proxies its tools. In both cases the manifest declares the capability and operator-controlled
+configuration, while the engine resolves and passes that configuration to the broker.
+
+The sandbox receives only the existing broker endpoint. Credentials, upstream endpoints, and
+admission policy remain broker-side. Every integration must provide deterministic, collision-free
+tool names; validate tool arguments and protocol identifiers; preserve declared input schemas and
+tool metadata where proxying; impose explicit time, redirect, and response-size policy; surface
+upstream failures rather than silently omitting requested tools; and include tests and operator
+documentation for its trust boundary and failure behavior. Direct sandbox access to another MCP
+endpoint requires a new ADR that explains why the broker boundary is unsuitable."""
+consequences = """
+Agents get one stable MCP endpoint and integrations share secret handling, egress, naming,
+validation, observability, and failure policy. Adding an external server does not add a sandbox
+credential or egress exception, and native tools use the same discovery surface as proxied ones.
+The broker becomes a deliberate concentration point: each integration expands its audit and
+maintenance surface, external protocol compatibility is broker work, and a badly behaved upstream
+can affect broker startup or availability unless its adapter is carefully bounded."""
+
+[[content.alternatives]]
+text = "Aggregate native and external MCP tools through Crucible's privileged broker"
+status = "accepted"
+pros = [
+    "gives the sandbox one stable, deny-by-default MCP boundary",
+    "keeps credentials, upstream authority, and admission policy outside the sandbox",
+    "centralizes discovery, namespacing, validation, limits, and observability",
+]
+cons = [
+    "makes the broker responsible for upstream lifecycle and protocol compatibility",
+    "concentrates availability and auditing risk in one privileged component",
+]
+
+[[content.alternatives]]
+text = "Connect each external MCP server directly to the sandbox"
+status = "rejected"
+pros = ["keeps third-party protocol code out of the broker"]
+cons = [
+    "creates one endpoint and egress-policy exception per integration",
+    "moves credentials or equivalent upstream authority across the broker boundary",
+    "fragments naming, validation, limits, and auditing",
+]
+rejection_reason = "It violates the single mediated privilege boundary established by [[ADR-0002]]."
+
+[[content.alternatives]]
+text = "Run a separate privileged sidecar for each MCP integration"
+status = "rejected"
+pros = [
+    "isolates third-party protocol implementations from the broker process",
+    "allows each integration to choose its own runtime",
+]
+cons = [
+    "creates multiple privileged services and lifecycle paths",
+    "duplicates authentication, policy, namespacing, observability, and limits",
+    "still requires an aggregation layer or exposes multiple endpoints to the sandbox",
+]
+rejection_reason = "Per-integration sidecars multiply the privileged boundary instead of defining one extension surface."
