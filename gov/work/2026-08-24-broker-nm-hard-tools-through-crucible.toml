@@ -1,0 +1,53 @@
+#:schema ../schema/work.schema.json
+
+[govctl]
+id = "WI-2026-08-24-001"
+title = "Broker nm-hard-tools through Crucible"
+status = "done"
+created = "2026-08-24"
+started = "2026-08-24"
+completed = "2026-08-24"
+refs = [
+    "ADR-0002",
+    "ADR-0024",
+    "RFC-0001:C-EGRESS",
+]
+
+[content]
+description = """
+Integrate nm-hard-tools as a manifest-configured capability behind Crucible's privileged broker.
+The broker, rather than the sandbox, must retain upstream tokens and network authority while
+preserving upstream MCP tool schemas and results through a bounded proxy."""
+
+[[content.acceptance_criteria]]
+text = "manifests can declare and validate multiple named nm-hard-tools services under the broker"
+status = "done"
+category = "added"
+
+[[content.acceptance_criteria]]
+text = "the broker discovers upstream tools, gives them collision-resistant names, and preserves their schemas and annotations"
+status = "done"
+category = "added"
+
+[[content.acceptance_criteria]]
+text = "upstream tokens remain broker-side and the sandbox receives only the existing broker endpoint"
+status = "done"
+category = "security"
+
+[[content.acceptance_criteria]]
+text = "proxy calls validate identifiers, refuse redirects, bound response bodies, and surface upstream MCP errors"
+status = "done"
+category = "security"
+
+[[content.acceptance_criteria]]
+text = "operator documentation explains configuration, trust boundaries, naming, and failure behavior"
+status = "done"
+category = "chore"
+
+[verification]
+required_guards = [
+    "GUARD-GOVCTL-CHECK",
+    "GUARD-CARGO-FMT",
+    "GUARD-CARGO-CLIPPY",
+    "GUARD-CARGO-TEST",
+]
