@@ -1,0 +1,92 @@
+#:schema ../schema/adr.schema.json
+
+[govctl]
+id = "ADR-0024"
+title = "Standardize the MCP tool integration contract"
+status = "accepted"
+date = "2026-08-24"
+refs = [
+    "ADR-0002",
+    "ADR-0005",
+    "ADR-0006",
+    "ADR-0009",
+    "ADR-0011",
+    "RFC-0001:C-EGRESS",
+]
+
+[content]
+context = """
+The architectural placement of privileged MCP tools is already settled. [[ADR-0002]] makes the
+broker the mediated privilege boundary; [[ADR-0005]] applies that pattern to builds and deploys;
+[[ADR-0006]] makes profiling a generic broker capability with configured backends; [[ADR-0009]]
+establishes name-prefixed tool composition; and [[ADR-0011]] projects manifest configuration into
+broker wiring. [[RFC-0001:C-EGRESS]] supplies the corresponding deny-by-default network contract.
+
+What those decisions do not define is the extension contract for the next tool. Native Crucible
+capabilities and external MCP servers otherwise risk inventing different registration, naming,
+validation, limits, discovery failures, tests, and documentation on every integration. This ADR
+standardizes that extension contract without reconsidering where the privilege boundary lives."""
+decision = """
+Every new MCP capability uses one broker integration contract with two implementation modes:
+
+1. A Crucible-owned capability registers a native broker handler.
+2. An external MCP service registers a broker-side adapter that discovers and proxies its tools.
+
+Both modes must expose deterministic, collision-free public tool names; validate requests before
+crossing their authority boundary; declare explicit timeout and response-size limits; surface
+configuration, discovery, and invocation failures rather than silently dropping tools; and ship
+tests plus operator documentation covering configuration, authority, and failure behavior.
+
+An external adapter must additionally preserve upstream input schemas and tool metadata, validate
+MCP request and response identifiers, refuse redirects unless an integration explicitly governs
+them, and retain upstream endpoints and credentials in broker-owned configuration. Discovery of a
+configured upstream is a startup requirement; an unavailable or invalid catalogue fails startup
+rather than producing a partially populated tool surface."""
+consequences = """
+Reviewers get a concrete checklist for new MCP integrations, and tool composition remains
+predictable whether a capability is native or proxied. External services retain their schemas and
+metadata without becoming transparent, unbounded pass-throughs. The contract adds implementation
+work to each adapter and makes configured upstream availability part of broker startup. It is a
+policy contract rather than a shared Rust trait, so implementations can still drift unless tests
+exercise the common requirements."""
+
+[[content.alternatives]]
+text = "One integration contract with native-handler and external-adapter modes"
+status = "accepted"
+pros = [
+    "covers first-party and upstream tools without pretending they have identical lifecycles",
+    "gives reviewers one checklist for naming, validation, limits, failures, tests, and docs",
+    "preserves upstream schemas and metadata while keeping proxy behavior bounded",
+]
+cons = [
+    "requires integration-specific code for external protocols and authentication",
+    "remains a policy convention until common implementation abstractions prove useful",
+]
+
+[[content.alternatives]]
+text = "Let each broker capability define its own integration conventions"
+status = "rejected"
+pros = [
+    "minimizes up-front framework work",
+    "lets a capability optimize entirely for its immediate backend",
+]
+cons = [
+    "repeats naming, validation, limit, and failure-policy decisions in every feature ADR",
+    "makes composed tool surfaces unpredictable",
+    "provides no consistent review standard for external adapters",
+]
+rejection_reason = "The existing broker integrations already show recurring concerns that should be contractual rather than rediscovered."
+
+[[content.alternatives]]
+text = "Represent every capability as an external MCP service behind one transparent proxy"
+status = "rejected"
+pros = [
+    "uses one protocol and proxy implementation for every capability",
+    "isolates capability implementations from the broker process",
+]
+cons = [
+    "adds process and discovery lifecycle to simple native capabilities",
+    "a transparent proxy has no place for capability-specific admission and validation",
+    "forces Crucible-owned tools to surrender direct access to broker state and invariants",
+]
+rejection_reason = "Native handlers and external adapters share a contract, but their implementation and policy needs are materially different."
